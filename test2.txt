@@ -1,0 +1,17 @@
+var a,b,c,d,x:real;
+begin
+     writeln('введите A,B,C');
+     readln( a,b,c );
+     d:=sqr(b)-4*a*c;
+     if d<0 then begin
+        writeln('действительных корней нет');
+     end else if d=0 then begin
+        x:=(-b)/2*a;
+        writeln('корень уравнения: ',x);
+     end else begin
+        x:=(-b+sqrt(d))/2*a;
+        writeln('1-й корень уравнения: ',x);
+        x:=(-b-sqrt(d))/2*a;
+        writeln('2-й корень уравнения: ',x);
+     end
+end.
