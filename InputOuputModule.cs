@@ -7,95 +7,129 @@ using static System.Runtime.CompilerServices.RuntimeHelpers;
 
 namespace Задание00prob
 {
+    internal struct TextPos
+    {
+        internal uint LineNum;
+        internal byte CharNum;
+
+        internal TextPos(uint lineNum = 0, byte charNum = 0)
+        {
+            LineNum = lineNum;
+            CharNum = charNum;
+        }
+    }
+
+    internal struct Err
+    {
+        internal TextPos Position;
+        internal byte Code;
+
+        internal Err(TextPos position, byte code)
+        {
+            Position = position;
+            Code = code;
+        }
+    }
     internal class InputOutputModule
     {
-        public struct TextPos
-        {
-            public uint LineNum;
-            public byte CharNum;
-
-            public TextPos(uint lineNum = 0, byte charNum = 0)
-            {
-                LineNum = lineNum;
-                CharNum = charNum;
-            }
-        }
-
-        struct Err
-        {
-            public TextPos Position;
-            public byte Code;
-
-            public Err(TextPos position, byte code)
-            {
-                Position = position;
-                Code = code;
-            }
-        }
-
         const int ERRMAX = 20;
-        static List<Err> errList = new List<Err>();
-
-        static readonly Dictionary<byte, string> errorDescriptions = new Dictionary<byte, string>
+        static int errCount = 0;
+        static string line = "";
+        public static TextPos positionNow = new TextPos();
+        static byte lastInLine = 0;
+        public static List<Err> err = new List<Err>();
+        static StreamReader File;
+        static Dictionary<byte, string> errDesc = new Dictionary<byte, string>
         {
             { 1, "Symbol ';' expected" },
             { 2, "Invalid use of method" },
             { 3, "Syntax error" },
             { 4, "Unidentified command" },
             { 5, ")' expected" },
-            { 6, "(' expected" }
+            { 6, "(' expected" },
+            { 201, "Unknown symbol(s)" },
+            { 203, "Argument out of range" }
         };
 
-        static int errCount = 0;
+        internal static char Ch { get; set; }
+        internal StreamReader Reader { get; set; }
+     
+        public static void Open(string path)
+        {
+            File = new StreamReader(path);
+            ReadNextLine();
+            NextCh();
+        }
+
+        internal static void NextCh()
+        {
+            if (positionNow.CharNum >= lastInLine)
+            {
+                if (err.Count > 0)
+                {
+                    ListErrors();
+                }
+                ReadNextLine();
+                if (line == null)
+                {
+                    Ch = '\0';
+                    return;
+                }
+                positionNow.LineNum++;
+                positionNow.CharNum = 0;
+            }
+            else
+            {
+                positionNow.CharNum++;
+            }
+            if (positionNow.CharNum < line.Length)
+            {
+                Ch = line[positionNow.CharNum];
+            }
+            else
+            {
+                Ch = '\0'; 
+            }
+        }
+
+        private static void ReadNextLine()
+        {
+            if (!File.EndOfStream)
+            {
+                line = File.ReadLine();
+                lastInLine = (byte)(line.Length - 1);
+                Console.WriteLine(line);
+                err = new List<Err>();
+            }
+            else
+            {
+                End();
+                line = null;
+            }
+        }
+
+        static void End()
+        {
+            Console.WriteLine($"Compilation completed: errors — {errCount}!");
+        }
+
+        static void ListErrors()
+        {
+            foreach (Err e in err)
+            {
+                ++errCount;
+                string caret = new string(' ', e.Position.CharNum) + "^";
+                string message = errDesc.ContainsKey(e.Code) ? errDesc[e.Code] : "***Unknown error***";
+                Console.WriteLine($"{caret} ***Error {e.Code}: {message}***");
+            }
+        }
+
         public static void Error(byte errorCode, TextPos position)
         {
-            if (errList.Count < ERRMAX)
+            if (err.Count < ERRMAX)
             {
-                errList.Add(new Err(position, errorCode));
-                errCount++;
+                err.Add(new Err(position, errorCode));
             }
-        }
-
-        public static void DisplayErrs(string[] lines)
-        {
-            for (uint ln = 0; ln < lines.Length; ln++)
-            {
-                string line = lines[ln];
-                Console.WriteLine(line);
-
-                var err = errList.FirstOrDefault(e => e.Position.LineNum == ln);
-
-                if (errList.Contains(err))
-                {
-                    Console.WriteLine(new string(' ', Math.Min(err.Position.CharNum, line.Length)) + "^");
-                    string description = errorDescriptions.ContainsKey(err.Code) ? errorDescriptions[err.Code] : "Unknown error";
-                    Console.WriteLine(new string(' ', Math.Min(err.Position.CharNum, line.Length)) + $"***Error ({err.Code}): {description}***");
-                }
-            }
-            
-        }
-
-        public static void NextCh(string[] lines)
-        {
-            var rand = new Random();
-            for (uint ln = 0; ln < lines.Length && errList.Count < ERRMAX; ln++)
-            {
-                string line = lines[ln];
-                for (byte cn = 0; cn < line.Length && errList.Count < ERRMAX; cn++)
-                {
-                    if (rand.NextDouble() < 0.05)
-                    {
-                        Error((byte)rand.Next(errorDescriptions.Count + 1), new TextPos(ln, cn));
-                        break;
-                    }
-                }
-            }
-        }
-        public static void Run(string[] lines)
-        {
-            NextCh(lines);
-            DisplayErrs(lines);
-            Console.WriteLine($"\nCompilation finished. Errors encountered -- {errCount}\n");
         }
     }
 }
